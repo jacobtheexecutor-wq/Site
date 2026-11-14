@@ -140,8 +140,6 @@ function createServer(opts = {}) {
   })
 }
 
-module.exports = { createServer }
-
 const app = createSecureApp()
 
 if (require.main === module) {
@@ -155,3 +153,5 @@ if (require.main === module) {
 }
 
 module.exports = app
+module.exports.createServer = createServer
+module.exports.createSecureApp = createSecureApp

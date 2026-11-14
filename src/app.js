@@ -35,6 +35,12 @@ function createSecureApp() {
   app.use(cookieParser());
   app.use(globalLimiter);
 
+  const ROOT = path.resolve(__dirname, '..');
+  const HTML_ROOT = path.join(ROOT, 'src', 'html');
+  app.use('/assets', express.static(path.join(ROOT, 'assets')));
+  app.get(['/', '/index.html'], (_req, res) => res.sendFile(path.join(HTML_ROOT, 'index.html')));
+  app.get('/admin', (_req, res) => res.sendFile(path.join(HTML_ROOT, 'admin.html')));
+
   const requireAuth = (req, res, next) => {
     const token = req.cookies[SESSION_COOKIE];
     if (!token) return res.status(401).json({ error: 'Please sign in to continue.' });
