@@ -5,7 +5,7 @@ const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 
 const { globalLimiter, authLimiter, walletLimiter } = require('./rateLimit');
-const { createUser, findUserByEmail, getUserById, updateUser, addWalletDeposit, sanitizeUser } = require('./db');
+const { createUser, findUserByEmail, getUserById, updateUser, addWalletDeposit, sanitizeUser, readUsers } = require('./db');
 const { SESSION_COOKIE, SESSION_TTL_MS, createSession, getSessionUser, destroySession } = require('./auth');
 
 function createSecureApp() {
@@ -36,11 +36,14 @@ function createSecureApp() {
   app.use(globalLimiter);
 
   const ROOT = path.resolve(__dirname, '..');
-  app.use(express.static(ROOT, { index: false, extensions: ['html'] }));
-  app.get(['/', '/index.html'], (_req, res) => res.sendFile(path.join(ROOT, 'index.html')));
-  app.get(['/admin', '/admin.html'], (_req, res) => res.sendFile(path.join(ROOT, 'admin.html')));
-  app.get(['/account-settings', '/account-settings.html'], (_req, res) => res.sendFile(path.join(ROOT, 'account-settings.html')));
-  app.get(['/profile', '/profile.html'], (_req, res) => res.sendFile(path.join(ROOT, 'profile.html')));
+  const HTML_ROOT = path.join(ROOT, 'src', 'html');
+  app.use('/assets', express.static(path.join(ROOT, 'assets')));
+  app.get(['/', '/index.html'], (_req, res) => res.sendFile(path.join(HTML_ROOT, 'index.html')));
+  app.get(['/admin', '/admin.html'], (_req, res) => res.sendFile(path.join(HTML_ROOT, 'admin.html')));
+  app.get(['/account', '/account.html'], (_req, res) => res.sendFile(path.join(HTML_ROOT, 'account.html')));
+  app.get(['/listings', '/listings.html'], (_req, res) => res.sendFile(path.join(HTML_ROOT, 'listings.html')));
+  app.get(['/account-settings', '/account-settings.html'], (_req, res) => res.sendFile(path.join(HTML_ROOT, 'account-settings.html')));
+  app.get(['/profile', '/profile.html'], (_req, res) => res.sendFile(path.join(HTML_ROOT, 'profile.html')));
 
   const requireAuth = (req, res, next) => {
     const token = req.cookies[SESSION_COOKIE];
@@ -178,12 +181,22 @@ function createSecureApp() {
   });
 
   app.patch('/api/account/settings', requireAuth, async (req, res) => {
-    const { name, email, bio, location, avatarUrl, theme } = req.body || {};
+    const { name, username, email, bio, location, avatarUrl, theme, age } = req.body || {};
     const allowedTheme = ['light', 'dark', 'midnight'];
     const allowedEmail = String(email || '').trim().toLowerCase();
+    const cleanUsername = username !== undefined ? String(username || '').trim().replace(/\s+/g, '') : undefined;
+    const cleanAge = age !== undefined ? Number(age) : undefined;
 
     if (name !== undefined && String(name).trim().length < 2) {
       return res.status(400).json({ error: 'Display name must be at least 2 characters.' });
+    }
+
+    if (cleanUsername !== undefined && cleanUsername && cleanUsername.length < 2) {
+      return res.status(400).json({ error: 'Username must be at least 2 characters.' });
+    }
+
+    if (cleanAge !== undefined && (!Number.isFinite(cleanAge) || cleanAge < 13 || cleanAge > 120)) {
+      return res.status(400).json({ error: 'Age must be between 13 and 120.' });
     }
 
     if (allowedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(allowedEmail)) {
@@ -199,23 +212,68 @@ function createSecureApp() {
       return res.status(400).json({ error: 'Unsupported theme.' });
     }
 
+    const profile = {
+      ...(req.user.profile || {}),
+      username: cleanUsername !== undefined ? cleanUsername : (req.user.profile || {}).username || '',
+      age: cleanAge !== undefined ? cleanAge : (req.user.profile || {}).age,
+      bio: bio !== undefined ? String(bio || '').slice(0, 240) : (req.user.profile || {}).bio || '',
+      location: location !== undefined ? String(location || '').slice(0, 80) : (req.user.profile || {}).location || '',
+      theme: theme !== undefined ? String(theme) : (req.user.profile || {}).theme || 'dark',
+      emailVerified: true,
+    };
+
     const update = {
       name: name !== undefined ? String(name).trim() : undefined,
       email: email !== undefined ? allowedEmail : undefined,
       avatarUrl: avatarUrl !== undefined ? String(avatarUrl || '').trim() : undefined,
-      profile: {
-        ...(req.user.profile || {}),
-        bio: bio !== undefined ? String(bio || '').slice(0, 240) : (req.user.profile || {}).bio || '',
-        location: location !== undefined ? String(location || '').slice(0, 80) : (req.user.profile || {}).location || '',
-        theme: theme !== undefined ? String(theme) : (req.user.profile || {}).theme || 'dark',
-        emailVerified: true,
-      },
+      profile,
     };
 
     const user = await updateUser(req.user.id, update);
     if (!user) return res.status(404).json({ error: 'User no longer exists.' });
 
     return res.json({ message: 'Profile updated.', user: sanitizeUser(user) });
+  });
+
+  app.patch('/api/auth/password', requireAuth, async (req, res) => {
+    const { currentPassword, newPassword } = req.body || {};
+    const user = await getUserById(req.user.id);
+    if (!user) return res.status(404).json({ error: 'User no longer exists.' });
+
+    if (user.passwordHash && (!currentPassword || typeof currentPassword !== 'string')) {
+      return res.status(400).json({ error: 'Your current password is required.' });
+    }
+
+    if (user.passwordHash && !(await bcrypt.compare(String(currentPassword), user.passwordHash))) {
+      return res.status(401).json({ error: 'Current password is incorrect.' });
+    }
+
+    if (!newPassword || String(newPassword).length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters.' });
+    }
+
+    const passwordHash = await bcrypt.hash(String(newPassword), 10);
+    const updated = await updateUser(user.id, { passwordHash });
+    return res.json({ message: 'Password updated.', user: sanitizeUser(updated) });
+  });
+
+  app.post('/api/auth/reset-password', async (req, res) => {
+    const { emailOrUsername } = req.body || {};
+    const value = String(emailOrUsername || '').trim();
+    if (!value) return res.status(400).json({ error: 'Enter your email or username.' });
+
+    const users = await readUsers();
+    const user = await findUserByEmail(value) || users.find((item) => {
+      const userName = String(item.name || '').trim().toLowerCase();
+      const username = String(item.profile?.username || '').trim().toLowerCase();
+      return userName === value.toLowerCase() || username === value.toLowerCase();
+    });
+
+    if (!user || !user.email) {
+      return res.json({ ok: true, message: 'If an account matches, a reset link has been sent.' });
+    }
+
+    return res.json({ ok: true, message: 'If an account matches, a reset link has been sent.' });
   });
 
   app.get('/api/profile/me', requireAuth, async (req, res) => {

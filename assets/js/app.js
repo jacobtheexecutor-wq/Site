@@ -105,6 +105,7 @@ function filtered() {
 }
 
 function render() {
+  if (!$("#sections") || !$("#filterbar") || !$("#cats")) return;
   renderCats();
   const all = state.listings;
   const browse = browsing();
@@ -149,7 +150,9 @@ function setEmpty(show, [title, text, canSell]) {
 
 /* ---------- category bar + dropdown ---------- */
 function renderCats() {
-  $("#cats").innerHTML = Market.CATEGORIES.map((c) =>
+  const cats = $("#cats");
+  if (!cats) return;
+  cats.innerHTML = Market.CATEGORIES.map((c) =>
     `<button class="cat${state.cat === c ? " active" : ""}" data-cat="${esc(c)}" aria-haspopup="true" aria-expanded="${openCat === c}" type="button">${esc(c)}${CHEVRON}</button>`).join("");
 }
 
@@ -179,38 +182,46 @@ function closeMenu() {
   openCat = null; $("#catMenu").hidden = true; renderCats();
 }
 
-$("#cats").addEventListener("click", (e) => {
-  const b = e.target.closest("[data-cat]"); if (!b) return;
-  e.stopPropagation(); // the bar re-renders, so the outside-click check below would see a detached target
-  openMenu(b);
-});
-$("#cats").addEventListener("scroll", closeMenu);
-$("#catMenu").addEventListener("click", (e) => {
-  const b = e.target.closest("[data-pick-cat]"); if (!b) return;
-  state.cat = b.dataset.pickCat; state.game = b.dataset.pickGame || null;
-  closeMenu(); render(); window.scrollTo({ top: 0 });
-});
+const catsEl = $("#cats"); if (catsEl) {
+  catsEl.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-cat]"); if (!b) return;
+    e.stopPropagation();
+    openMenu(b);
+  });
+  catsEl.addEventListener("scroll", closeMenu);
+}
+const catMenuEl = $("#catMenu"); if (catMenuEl) {
+  catMenuEl.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-pick-cat]"); if (!b) return;
+    state.cat = b.dataset.pickCat; state.game = b.dataset.pickGame || null;
+    closeMenu(); render(); window.scrollTo({ top: 0 });
+  });
+}
 document.addEventListener("click", (e) => { if (!e.target.closest("#catMenu, #cats")) closeMenu(); });
 window.addEventListener("resize", closeMenu);
 
-$("#crumbs").addEventListener("click", (e) => {
-  const b = e.target.closest("[data-clear]"); if (!b) return;
-  const k = b.dataset.clear;
-  if (k === "all") { state.cat = state.game = null; state.q = ""; state.browseAll = false; $("#search").value = ""; }
-  else if (k === "q") { state.q = ""; $("#search").value = ""; }
-  else state[k] = null;
-  render();
-});
-$("#search").addEventListener("input", (e) => { state.q = e.target.value; render(); });
-$("#verifiedOnly").addEventListener("change", (e) => { state.verifiedOnly = e.target.checked; render(); });
-$("#sort").addEventListener("change", (e) => { state.sort = e.target.value; render(); });
-$("#sections").addEventListener("click", (e) => {
-  if (e.target.closest("#seeAll")) { state.browseAll = true; render(); window.scrollTo({ top: 0 }); return; }
-  const who = e.target.closest("[data-user]");
-  if (who) { e.stopPropagation(); openProfile(who.dataset.user); return; }
-  const c = e.target.closest("[data-id]"); if (!c) return;
-  const l = state.listings.find((x) => x.id === c.dataset.id); if (l) openListing(l);
-});
+const crumbsEl = $("#crumbs"); if (crumbsEl) {
+  crumbsEl.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-clear]"); if (!b) return;
+    const k = b.dataset.clear;
+    if (k === "all") { state.cat = state.game = null; state.q = ""; state.browseAll = false; const searchEl = $("#search"); if (searchEl) searchEl.value = ""; }
+    else if (k === "q") { state.q = ""; const searchEl = $("#search"); if (searchEl) searchEl.value = ""; }
+    else state[k] = null;
+    render();
+  });
+}
+const searchEl = $("#search"); if (searchEl) searchEl.addEventListener("input", (e) => { state.q = e.target.value; render(); });
+const verifiedOnlyEl = $("#verifiedOnly"); if (verifiedOnlyEl) verifiedOnlyEl.addEventListener("change", (e) => { state.verifiedOnly = e.target.checked; render(); });
+const sortEl = $("#sort"); if (sortEl) sortEl.addEventListener("change", (e) => { state.sort = e.target.value; render(); });
+const sectionsEl = $("#sections"); if (sectionsEl) {
+  sectionsEl.addEventListener("click", (e) => {
+    if (e.target.closest("#seeAll")) { state.browseAll = true; render(); window.scrollTo({ top: 0 }); return; }
+    const who = e.target.closest("[data-user]");
+    if (who) { e.stopPropagation(); openProfile(who.dataset.user); return; }
+    const c = e.target.closest("[data-id]"); if (!c) return;
+    const l = state.listings.find((x) => x.id === c.dataset.id); if (l) openListing(l);
+  });
+}
 
 /* ---------- listing detail ---------- */
 function openListing(l) {
@@ -258,14 +269,30 @@ async function loadMe() {
 function renderAvatar() {
   const a = $("#accountBtn"), me = state.me;
   if (!a) return;
-  a.innerHTML = me ? `${esc(me.name[0].toUpperCase())}<span class="dot ${me.owner ? "owner" : me.verified ? "ok" : "risk"}"></span>` : PERSON;
+  if (me && me.avatarUrl) {
+    a.innerHTML = `<img class="avatar-image" src="${esc(me.avatarUrl)}" alt="${esc(me.name || "Profile picture")}" /><span class="dot ${me.owner ? "owner" : me.verified ? "ok" : "risk"}"></span>`;
+  } else {
+    a.innerHTML = me ? `${esc(me.name[0].toUpperCase())}<span class="dot ${me.owner ? "owner" : me.verified ? "ok" : "risk"}"></span>` : PERSON;
+  }
   a.setAttribute("aria-label", me ? `Your seller account @${me.name}` : "Sign up as a seller");
 }
 
 const accountBtn = $("#accountBtn");
-if (accountBtn) accountBtn.addEventListener("click", () => (state.me ? openAccount() : openJoin()));
+if (accountBtn) {
+  accountBtn.addEventListener("click", (e) => {
+    const href = accountBtn.getAttribute("href") || "/account.html";
+    e.preventDefault();
+    window.location.assign(href);
+  });
+}
 const sellBtn = $("#sellBtn");
 if (sellBtn) sellBtn.addEventListener("click", startSell);
+const browseBtn = $("#browseBtn");
+if (browseBtn) browseBtn.addEventListener("click", () => {
+  state.browseAll = true;
+  render();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+});
 const emptySell = $("#emptySell");
 if (emptySell) emptySell.addEventListener("click", startSell);
 
@@ -282,20 +309,26 @@ const JOIN = {
 function setJoinMode(m) {
   joinMode = m;
   document.querySelectorAll(".seg [data-join-mode]").forEach((b) => b.classList.toggle("on", b.dataset.joinMode === m));
-  $("#joinForm .seg").hidden = m === "forgot" || m === "reset";
-  for (const k of Object.keys(JOIN)) $(`.join-${k}`).hidden = k !== m;
-  $("#joinTitle").textContent = JOIN[m][0];
-  $("#joinBtn").textContent = JOIN[m][1];
-  $("#joinErr").textContent = ""; $("#joinOk").hidden = true;
-  // Without email on the server, "forgot password" means asking staff.
-  const off = m === "forgot" && !state.emailReset;
-  $("#forgotRow").hidden = off; $("#joinBtn").hidden = off;
-  $("#forgotHelp").textContent = off
+  const seg = $("#joinForm .seg"); if (seg) seg.hidden = m === "forgot" || m === "reset";
+  for (const k of Object.keys(JOIN)) {
+    const el = document.querySelector(`.join-${k}`);
+    if (el) el.hidden = k !== m;
+  }
+  const joinTitle = $("#joinTitle"); if (joinTitle) joinTitle.textContent = JOIN[m][0];
+  const joinBtn = $("#joinBtn"); if (joinBtn) joinBtn.textContent = JOIN[m][1];
+  const joinErr = $("#joinErr"); if (joinErr) joinErr.textContent = "";
+  const joinOk = $("#joinOk"); if (joinOk) joinOk.hidden = true;
+  const forgotRow = $("#forgotRow"); const forgotHelp = $("#forgotHelp");
+  if (forgotRow) forgotRow.hidden = !(m === "forgot") || !state.emailReset;
+  if (forgotHelp) forgotHelp.textContent = (m === "forgot" && !state.emailReset)
     ? (Market.mode === "demo"
       ? "Demo mode keeps accounts in this browser only, so there's no password to reset by email."
       : "Message the site owner from your contact details. After checking it's really you, staff will give you a temporary password.")
     : "Enter your email or username. We'll email you a link to choose a new password. It works for 30 minutes.";
-  if (m === "forgot") { const l = $("#joinForm").elements.login.value; if (l) $("#joinForm").elements.forgotLogin.value = l; }
+  if (m === "forgot") {
+    const form = $("#joinForm");
+    if (form && form.elements.login && form.elements.login.value) form.elements.forgotLogin.value = form.elements.login.value;
+  }
 }
 function openJoin(next, mode) {
   afterJoin = typeof next === "function" ? next : null;
@@ -357,9 +390,9 @@ $("#joinForm").addEventListener("submit", async (e) => {
 let picData = null;
 function resetPic() {
   picData = null;
-  $("#picInput").value = "";
-  $("#picPreview").hidden = true; $("#picPreview").removeAttribute("src");
-  $("#picHint").hidden = false;
+  const picInput = $("#picInput"); if (picInput) picInput.value = "";
+  const picPreview = $("#picPreview"); if (picPreview) { picPreview.hidden = true; picPreview.removeAttribute("src"); }
+  const picHint = $("#picHint"); if (picHint) picHint.hidden = false;
 }
 function toggleOther() {
   const other = $("#postGame").value === OTHER;
@@ -436,24 +469,29 @@ function openPost() {
 $("#postGame").addEventListener("change", toggleOther);
 
 // Shrink the picture in the browser (max 640px, JPEG) so uploads stay small.
-$("#picInput").addEventListener("change", async (e) => {
-  const file = e.target.files && e.target.files[0];
-  if (!file) return;
-  $("#postErr").textContent = "";
-  if (!/^image\/(png|jpeg|webp)$/.test(file.type)) { resetPic(); $("#postErr").textContent = "Use a PNG, JPG or WebP picture."; return; }
-  try {
-    const bmp = await createImageBitmap(file);
-    const scale = Math.min(1, 640 / Math.max(bmp.width, bmp.height));
-    const c = document.createElement("canvas");
-    c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
-    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
-    let q = 0.85, url = c.toDataURL("image/jpeg", q);
-    while (url.length > 260000 && q > 0.4) { q -= 0.1; url = c.toDataURL("image/jpeg", q); } // ~190 KB of bytes
-    if (url.length > 270000) throw new Error("too big");
-    picData = url;
-    $("#picPreview").src = url; $("#picPreview").hidden = false; $("#picHint").hidden = true;
-  } catch { resetPic(); $("#postErr").textContent = "Couldn't read that picture. Try another one."; }
-});
+const picInputEl = $("#picInput");
+if (picInputEl) {
+  picInputEl.addEventListener("change", async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    $("#postErr").textContent = "";
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) { resetPic(); $("#postErr").textContent = "Use a PNG, JPG or WebP picture."; return; }
+    try {
+      const bmp = await createImageBitmap(file);
+      const scale = Math.min(1, 640 / Math.max(bmp.width, bmp.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+      c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+      let q = 0.85, url = c.toDataURL("image/jpeg", q);
+      while (url.length > 260000 && q > 0.4) { q -= 0.1; url = c.toDataURL("image/jpeg", q); }
+      if (url.length > 270000) throw new Error("too big");
+      picData = url;
+      const picPreview = $("#picPreview"); const picHint = $("#picHint");
+      if (picPreview) { picPreview.src = url; picPreview.hidden = false; }
+      if (picHint) picHint.hidden = true;
+    } catch { resetPic(); $("#postErr").textContent = "Couldn't read that picture. Try another one."; }
+  });
+}
 $("#postForm").addEventListener("submit", async (e) => {
   if (e.submitter && e.submitter.value === "cancel") return;
   e.preventDefault();
@@ -498,13 +536,21 @@ async function refresh() {
 $("#footPay").innerHTML = ["visa", "mastercard", "americanexpress", "discover", "applepay", "googlepay"].map(payLogo).join("");
 
 (async () => {
-  renderAvatar(); render();
+  renderAvatar();
+  const marketShell = Boolean($("#search") && $("#sections") && $("#cats") && $("#filterbar"));
+  if (!marketShell) {
+    const demoBar = $("#demoBar"); if (demoBar) demoBar.hidden = Market.mode !== "demo";
+    await loadMe();
+    startRouter();
+    return;
+  }
+  render();
   const first = await Market.init();
   state.listings = first.listings; if (first.fees) state.fees = first.fees; if (first.owners) state.owners = first.owners;
   state.emailReset = !!first.emailReset;
-  $("#demoBar").hidden = Market.mode !== "demo";
+  const demoBar = $("#demoBar"); if (demoBar) demoBar.hidden = Market.mode !== "demo";
   render();
   Market.icons().then((icons) => { state.icons = icons; render(); rerenderPage(); });
   await loadMe();
-  startRouter(); // account.js
+  startRouter();
 })();

@@ -23,6 +23,7 @@ const path = require('path')
 const { createSecureApp } = require('./src/app')
 
 const ROOT = __dirname
+const HTML_ROOT = path.join(ROOT, 'src', 'html')
 const secureApp = createSecureApp()
 const MAX_BODY = 1024 * 1024 // 1 MB: listing pictures are ~270 KB at most
 const TYPES = {
@@ -44,11 +45,21 @@ function serveStatic(req, res, u) {
 
   let file = path.resolve(ROOT, rel)
   if (u.pathname === '/') {
-    file = path.join(ROOT, 'index.html')
+    file = path.join(HTML_ROOT, 'index.html')
+  } else if (u.pathname === '/admin' || u.pathname === '/admin.html') {
+    file = path.join(HTML_ROOT, 'admin.html')
+  } else if (u.pathname === '/account' || u.pathname === '/account.html') {
+    file = path.join(HTML_ROOT, 'account.html')
+  } else if (u.pathname === '/listings' || u.pathname === '/listings.html') {
+    file = path.join(HTML_ROOT, 'listings.html')
+  } else if (u.pathname === '/profile' || u.pathname === '/profile.html') {
+    file = path.join(HTML_ROOT, 'profile.html')
+  } else if (u.pathname === '/account-settings' || u.pathname === '/account-settings.html') {
+    file = path.join(HTML_ROOT, 'account-settings.html')
   } else if (u.pathname.startsWith('/assets/')) {
     file = path.resolve(ROOT, u.pathname.slice(1))
   } else if (u.pathname.endsWith('.html')) {
-    file = path.join(ROOT, path.basename(u.pathname))
+    file = path.join(HTML_ROOT, path.basename(u.pathname))
   }
 
   const name = path.basename(file)

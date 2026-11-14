@@ -15,7 +15,12 @@ const year = (t) => new Date(t).getFullYear();
 const when = (t) => new Date(t).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 const r2 = (n) => Math.round(n * 100) / 100;
 const feeFor = (price, method) => (method === "balance" ? 0 : r2(price * state.fees.pct + state.fees.fixed));
-const avatarHtml = (u, cls = "") => `<span class="pavatar ${cls}${u.owner ? " owner" : ""}">${esc((u.name || "?")[0].toUpperCase())}${u.owner ? `<span class="pv owner">👑</span>` : u.verified ? `<span class="pv ok">✓</span>` : ""}</span>`;
+const avatarHtml = (u, cls = "") => {
+  if (u.avatarUrl) {
+    return `<span class="pavatar ${cls}${u.owner ? " owner" : ""}"><img class="avatar-image" src="${esc(u.avatarUrl)}" alt="${esc(u.name || "Profile picture")}" />${u.owner ? `<span class="pv owner">👑</span>` : u.verified ? `<span class="pv ok">✓</span>` : ""}</span>`;
+  }
+  return `<span class="pavatar ${cls}${u.owner ? " owner" : ""}">${esc((u.name || "?")[0].toUpperCase())}${u.owner ? `<span class="pv owner">👑</span>` : u.verified ? `<span class="pv ok">✓</span>` : ""}</span>`;
+};
 function sellerChips(s) {
   return `<span class="chips">
     ${s.owner ? `<span class="chip-s owner">👑 Site owner</span>` : ""}
@@ -473,6 +478,219 @@ async function openAccount(tab) {
   await Promise.all([loadMe(), Market.myOrders().then((r) => (myOrders = r.orders)).catch(() => (myOrders = []))]);
   renderAccount();
 }
+
+if (window.location.pathname.endsWith("/account.html") || window.location.pathname === "/account") {
+  window.addEventListener("load", async () => {
+    try {
+      await loadMe();
+      renderStandaloneAccountPage();
+    } catch {
+      renderStandaloneAccountPage();
+    }
+  });
+}
+
+function renderStandaloneAccountPage() {
+  const root = document.getElementById("accountPageContent");
+  if (!root) return;
+
+  if (!state.me) {
+    root.innerHTML = `
+      <div class="account-grid">
+        <form class="dform account-card" id="standaloneAuthForm">
+          <h2>Sign in to your account</h2>
+          <label>Email<input name="email" type="email" autocomplete="email" required /></label>
+          <label>Password<input name="password" type="password" autocomplete="current-password" required /></label>
+          <button class="btn sell wide" type="submit">Sign in</button>
+          <button class="btn ghost wide" id="accountCreateBtn" type="button">Create account</button>
+        </form>
+        <div class="account-card">
+          <h2>Need a reset link?</h2>
+          <p class="muted">Use the form below if you already set up an account email.</p>
+          <form class="dform" id="standaloneResetForm">
+            <label>Email or username<input name="emailOrUsername" maxlength="120" /></label>
+            <button class="btn ghost wide" type="submit">Send reset link</button>
+          </form>
+        </div>
+      </div>`;
+
+    const authForm = document.getElementById("standaloneAuthForm");
+    const resetForm = document.getElementById("standaloneResetForm");
+    if (authForm) {
+      authForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = authForm.elements.email.value.trim();
+        const password = authForm.elements.password.value;
+        try {
+          await fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify({ email: name, password }),
+          }).then(async (res) => {
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Unable to sign in.");
+            await loadMe();
+            renderStandaloneAccountPage();
+            toast("Signed in successfully.");
+          });
+        } catch (err) {
+          toast(err.message || "Unable to sign in.");
+        }
+      });
+    }
+
+    if (resetForm) {
+      resetForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const value = resetForm.elements.emailOrUsername.value.trim();
+        try {
+          const res = await fetch("/api/auth/reset-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify({ emailOrUsername: value }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "Reset failed.");
+          toast(data.message || "Reset link sent.");
+        } catch (err) {
+          toast(err.message || "Reset failed.");
+        }
+      });
+    }
+
+    const createBtn = document.getElementById("accountCreateBtn");
+    if (createBtn) createBtn.addEventListener("click", () => openJoin());
+    return;
+  }
+
+  const me = state.me;
+  const profile = me.profile || {};
+  root.innerHTML = `
+    <div class="account-grid">
+      <form class="dform account-card" id="standaloneProfileForm">
+        <div class="account-header small-gap">
+          <div class="pavatar lg">${me.avatarUrl ? `<img class="avatar-image" src="${esc(me.avatarUrl)}" alt="${esc(me.name || "Profile picture")}" />` : esc((me.name || "?")[0].toUpperCase())}</div>
+          <div>
+            <h2>${esc(me.name || "Your profile")}</h2>
+            <p class="muted">@${esc(profile.username || me.name || "username")}</p>
+          </div>
+        </div>
+        <label>Display name<input name="name" value="${esc(me.name || "")}" /></label>
+        <label>Username<input name="username" value="${esc(profile.username || "")}" /></label>
+        <label>Age<input name="age" type="number" min="13" max="120" value="${esc(profile.age || "")}" /></label>
+        <label>Profile picture URL<input name="avatarUrl" value="${esc(me.avatarUrl || "")}" placeholder="https://example.com/pfp.jpg" /></label>
+        <label>Location<input name="location" value="${esc(profile.location || "")}" /></label>
+        <label>Bio<textarea name="bio" rows="4">${esc(profile.bio || "")}</textarea></label>
+        <button class="btn sell wide" type="submit">Save profile</button>
+      </form>
+      <div class="account-card">
+        <h2>Security</h2>
+        <form class="dform" id="standaloneSecurityForm">
+          <label>Email<input name="email" type="email" value="${esc(me.email || "")}" autocomplete="email" /></label>
+          <label>Current password<input name="currentPassword" type="password" autocomplete="current-password" /></label>
+          <label>New password<input name="newPassword" type="password" autocomplete="new-password" /></label>
+          <div class="btnrow">
+            <button class="btn sell" type="submit">Update password</button>
+            <button class="btn ghost" id="resetPasswordBtn" type="button">Reset password</button>
+          </div>
+        </form>
+      </div>
+    </div>`;
+
+  const profileForm = document.getElementById("standaloneProfileForm");
+  const securityForm = document.getElementById("standaloneSecurityForm");
+  const resetBtn = document.getElementById("resetPasswordBtn");
+
+  if (profileForm) {
+    profileForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const body = {
+        name: form.elements.name.value.trim(),
+        username: form.elements.username.value.trim(),
+        age: form.elements.age.value === "" ? undefined : Number(form.elements.age.value),
+        avatarUrl: form.elements.avatarUrl.value.trim(),
+        location: form.elements.location.value.trim(),
+        bio: form.elements.bio.value.trim(),
+      };
+      try {
+        const res = await fetch("/api/account/settings", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Unable to save profile.");
+        await loadMe();
+        renderStandaloneAccountPage();
+        toast("Profile updated.");
+      } catch (err) {
+        toast(err.message || "Unable to save profile.");
+      }
+    });
+  }
+
+  if (securityForm) {
+    securityForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const email = form.elements.email.value.trim();
+      const currentPassword = form.elements.currentPassword.value || undefined;
+      const newPassword = form.elements.newPassword.value || undefined;
+      try {
+        if (email && email !== (me.email || "")) {
+          const emailRes = await fetch("/api/account/settings", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify({ email }),
+          });
+          const emailData = await emailRes.json();
+          if (!emailRes.ok) throw new Error(emailData.error || "Unable to update email.");
+        }
+
+        if (newPassword) {
+          const passRes = await fetch("/api/auth/password", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify({ currentPassword, newPassword }),
+          });
+          const passData = await passRes.json();
+          if (!passRes.ok) throw new Error(passData.error || "Unable to update password.");
+        }
+
+        await loadMe();
+        renderStandaloneAccountPage();
+        toast("Account details saved.");
+      } catch (err) {
+        toast(err.message || "Unable to update account.");
+      }
+    });
+  }
+
+  if (resetBtn) {
+    resetBtn.addEventListener("click", async () => {
+      try {
+        const res = await fetch("/api/auth/reset-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ emailOrUsername: me.email || (me.profile && me.profile.username) || me.name }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Reset link could not be sent.");
+        toast(data.message || "Reset link sent.");
+      } catch (err) {
+        toast(err.message || "Reset link could not be sent.");
+      }
+    });
+  }
+}
+
 function renderAccount() {
   const me = state.me; if (!me) return closeDrawer();
   const w = state.wallet;
@@ -529,6 +747,9 @@ function accountTab() {
       : `<div class="warn"><b>Your listings show as Risky.</b><span>To get verified, send the site owner your user ID below.</span></div>`}
     <p class="muted small">User ID</p><div class="contact" style="user-select:all">${esc(me.id)}</div>
     <form class="dform" id="profileForm">
+      <label>Display name / username<input name="name" maxlength="30" value="${esc(me.name || "")}" /></label>
+      <label>Public handle <span class="opt">used in your profile URL and seller tag</span><input name="username" maxlength="30" value="${esc(me.name || "")}" /></label>
+      <label>Profile image URL <span class="opt">https://...jpg or png</span><input name="avatarUrl" maxlength="300" value="${esc(me.avatarUrl || "")}" placeholder="https://example.com/pfp.jpg" /></label>
       <label>Contact (only shown to people you trade with)<input name="contact" maxlength="80" value="${esc(me.contact || "")}" /></label>
       <label>Bio <span class="opt">shown on your profile</span><textarea name="bio" maxlength="160" rows="2">${esc(me.bio || "")}</textarea></label>
       <button class="btn sell" type="submit">Save</button>
@@ -686,8 +907,18 @@ $("#drawer").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = e.target, btn = f.querySelector("[type=submit]");
   if (f.id === "profileForm") {
-    try { btn.disabled = true; await Market.updateProfile({ contact: f.elements.contact.value, bio: f.elements.bio.value }); await loadMe(); toast("Profile saved."); renderAccount(); }
-    catch (ex) { toast(ex.message); btn.disabled = false; }
+    try {
+      btn.disabled = true;
+      const displayName = (f.elements.name.value || f.elements.username.value || state.me?.name || "").trim();
+      const publicHandle = (f.elements.username.value || displayName).trim();
+      await Market.updateProfile({
+        name: publicHandle,
+        avatarUrl: f.elements.avatarUrl.value.trim(),
+        contact: f.elements.contact.value,
+        bio: f.elements.bio.value,
+      });
+      await loadMe(); toast("Profile saved."); renderAccount();
+    } catch (ex) { toast(ex.message); btn.disabled = false; }
   }
   if (f.id === "loginForm") {
     const el = f.elements;

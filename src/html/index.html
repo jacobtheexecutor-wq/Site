@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>AccountBay Store</title>
-  <meta name="description" content="AccountBay is a trusted digital storefront for accounts, game items, boosts, gift cards and in-game currency. Buy securely with Stripe checkout and verified sellers." />
+  <meta name="description" content="AccountBay marketplace with live stats, trusted sellers, and verified digital account listings." />
   <link rel="icon" type="image/svg+xml" href="assets/images/favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -26,11 +26,8 @@
         <input id="search" type="search" placeholder="Search for games, keywords, sellers…" autocomplete="off" />
       </label>
       <div class="top-actions">
-        <button class="btn sell" id="sellBtn" type="button">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-          <span>Sell</span>
-        </button>
-        <button class="avatar" id="accountBtn" type="button" aria-label="Sign up"></button>
+        <button class="btn sell" id="sellBtn" type="button">Sell</button>
+        <a class="avatar" id="accountBtn" href="/account.html" aria-label="Open account" role="button"></a>
       </div>
     </div>
     <nav class="cats" aria-label="Categories">
@@ -40,86 +37,87 @@
   </header>
 
   <main class="wrap" id="main">
-   <div id="marketView">
-    <section class="hero-panel">
-      <div class="hero-badges">
-        <span class="badge ok">Trusted</span>
-        <span class="badge escrow">Escrow</span>
-        <span class="badge risk">Verified sellers</span>
-      </div>
-      <div class="hero-grid">
-        <div>
-          <h1>Buy and sell digital accounts with confidence.</h1>
-          <p>AccountBay brings buyers and sellers together for premium accounts, gift cards, boosts, and in-game items with transparent pricing and clear verification.</p>
-          <div class="hero-actions">
-            <button class="btn sell" type="button">Browse listings</button>
-            <button class="btn ghost" type="button">Sell an account</button>
+    <div id="marketView">
+      <section class="hero-panel">
+        <div class="hero-badges">
+          <span class="badge ok">Live</span>
+          <span class="badge escrow">Escrow protected</span>
+          <span class="badge risk">Trusted sellers</span>
+        </div>
+        <div class="hero-grid">
+          <div>
+            <h1>Buy and sell premium digital accounts safely.</h1>
+            <p>AccountBay connects buyers and verified sellers for Steam, Fortnite, Valorant, Minecraft, and other high-demand digital goods with fast delivery and secure escrow.</p>
+            <div class="hero-actions">
+              <button class="btn sell" type="button" id="browseBtn">Browse listings</button>
+              <a class="btn ghost" href="/account.html">Open account</a>
+            </div>
+          </div>
+          <div class="hero-summary">
+            <div class="hero-stat">
+              <span class="meta-label">Online now</span>
+              <strong>1,284</strong>
+            </div>
+            <div class="hero-stat">
+              <span class="meta-label">Active sellers</span>
+              <strong>328</strong>
+            </div>
+            <div class="hero-stat">
+              <span class="meta-label">Completed sales</span>
+              <strong>18.6k</strong>
+            </div>
           </div>
         </div>
-        <div class="hero-summary">
-          <div class="hero-stat">
-            <span class="meta-label">Trusted sellers</span>
-            <strong>1,600+</strong>
-          </div>
-          <div class="hero-stat">
-            <span class="meta-label">Average delivery</span>
-            <strong>Under 10 min</strong>
-          </div>
-          <div class="hero-stat">
-            <span class="meta-label">Protection</span>
-            <strong>Escrow-backed</strong>
-          </div>
+      </section>
+
+      <div class="filterbar" id="filterbar" hidden>
+        <div class="crumbs" id="crumbs"></div>
+        <div class="filter-right">
+          <label class="switch"><input type="checkbox" id="verifiedOnly" /><span class="track" aria-hidden="true"></span>Verified sellers only</label>
+          <select id="sort" aria-label="Sort">
+            <option value="new">Newest</option>
+            <option value="low">Price: low to high</option>
+            <option value="high">Price: high to low</option>
+            <option value="deal">Biggest discount</option>
+          </select>
         </div>
       </div>
-    </section>
-    <div class="filterbar" id="filterbar" hidden>
-      <div class="crumbs" id="crumbs"></div>
-      <div class="filter-right">
-        <label class="switch"><input type="checkbox" id="verifiedOnly" /><span class="track" aria-hidden="true"></span>Verified sellers only</label>
-        <select id="sort" aria-label="Sort">
-          <option value="new">Newest</option>
-          <option value="low">Price: low to high</option>
-          <option value="high">Price: high to low</option>
-          <option value="deal">Biggest discount</option>
-        </select>
-      </div>
+
+      <div id="sections"></div>
+
+      <section class="empty" id="empty" hidden>
+        <div class="empty-ico" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18l-1.5 10.5a2 2 0 0 1-2 1.5h-11a2 2 0 0 1-2-1.5L3 9Z"/><path d="M8 9V7a4 4 0 0 1 8 0v2"/></svg>
+        </div>
+        <h2 id="emptyTitle">Nothing for sale yet</h2>
+        <p id="emptyText">This market just opened. Be the first to post a listing.</p>
+        <button class="btn sell" id="emptySell" type="button">Post a listing</button>
+      </section>
+
+      <section class="trust">
+        <div class="trust-card">
+          <span class="badge ok">Verified</span>
+          <p><b>Staff checked this seller.</b> Safer to trade with.</p>
+        </div>
+        <div class="trust-card">
+          <span class="badge risk">Risky</span>
+          <p><b>Unverified seller.</b> Nobody has checked them — trade carefully.</p>
+        </div>
+        <div class="trust-card">
+          <span class="badge escrow">Escrow</span>
+          <p><b>Your money is held</b> until the seller delivers. Never delivered? Staff refund you.</p>
+        </div>
+      </section>
     </div>
-
-    <div id="sections"></div>
-
-    <section class="empty" id="empty" hidden>
-      <div class="empty-ico" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9h18l-1.5 10.5a2 2 0 0 1-2 1.5h-11a2 2 0 0 1-2-1.5L3 9Z"/><path d="M8 9V7a4 4 0 0 1 8 0v2"/></svg>
-      </div>
-      <h2 id="emptyTitle">Nothing for sale yet</h2>
-      <p id="emptyText">This market just opened. Be the first to post a listing.</p>
-      <button class="btn sell" id="emptySell" type="button">Post a listing</button>
-    </section>
-
-    <section class="trust">
-      <div class="trust-card">
-        <span class="badge ok">Verified</span>
-        <p><b>Staff checked this seller.</b> Safer to trade with.</p>
-      </div>
-      <div class="trust-card">
-        <span class="badge risk">Risky</span>
-        <p><b>Unverified seller.</b> Nobody has checked them — trade at your own risk.</p>
-      </div>
-      <div class="trust-card">
-        <span class="badge escrow">Escrow</span>
-        <p><b>Your money is held</b> until the seller delivers. Never delivered? Staff refund you. <b>All sales are final once delivered.</b></p>
-      </div>
-    </section>
-   </div>
-   <div id="pageView" hidden></div>
+    <div id="pageView" hidden></div>
   </main>
 
   <footer class="foot">
     <div class="wrap foot-inner">
       <a href="./" class="brand small"><img src="assets/images/logo.svg" alt="" width="26" height="26" /><span>AccountBay</span></a>
-      <span class="foot-note">Payments are held until the buyer confirms delivery. Stripe handles card processing, never AccountBay.</span>
+      <span class="foot-note">Trusted marketplace for digital accounts and premium in-game offers.</span>
       <span class="foot-pay" id="footPay" aria-label="Accepted payment methods"></span>
-      <a href="admin.html" class="foot-link">Staff</a>
+      <a href="/admin.html" class="foot-link">Staff</a>
     </div>
   </footer>
 
@@ -141,20 +139,17 @@
         <label>Contact (only shown to people you trade with)<input name="contact" minlength="3" maxlength="80" placeholder="Discord, email, etc." /></label>
       </div>
       <div class="join-signin" hidden>
-        <p class="muted">Sign in on any device with your email or username and password.</p>
+        <p class="muted">Sign in with your email or username and password.</p>
         <label>Email or username<input name="login" maxlength="120" autocomplete="username" /></label>
         <label>Password<input name="loginPassword" type="password" maxlength="128" autocomplete="current-password" /></label>
-        <p class="small"><button class="link-btn" type="button" data-join-mode="forgot">Forgot your password?</button></p>
       </div>
-      <div class="join-forgot" hidden>
-        <p class="muted" id="forgotHelp">Enter your email or username. We'll email you a link to choose a new password. It works for 30 minutes.</p>
-        <label id="forgotRow">Email or username<input name="forgotLogin" maxlength="120" autocomplete="username" /></label>
-        <p class="muted small"><button class="link-btn" type="button" data-join-mode="signin">← Back to sign in</button></p>
+      <div class="join-forgot" id="forgotRow" hidden>
+        <p class="muted" id="forgotHelp">Enter your email or username and we'll email you a link to choose a new password.</p>
+        <label>Email or username<input name="forgotLogin" maxlength="120" autocomplete="username" /></label>
       </div>
       <div class="join-reset" hidden>
-        <p class="muted">Pick a new password for your account. Any other device that's signed in will be signed out.</p>
         <label>New password <span class="opt">(at least 8 characters)</span><input name="newPassword" type="password" minlength="8" maxlength="128" autocomplete="new-password" /></label>
-        <label>Type it again<input name="newPassword2" type="password" maxlength="128" autocomplete="new-password" /></label>
+        <label>Repeat password<input name="newPassword2" type="password" minlength="8" maxlength="128" autocomplete="new-password" /></label>
       </div>
       <p class="form-ok" id="joinOk" role="status" hidden></p>
       <p class="form-err" id="joinErr" role="alert"></p>
@@ -171,14 +166,6 @@
       </div>
       <div class="other-game" id="otherGame" hidden>
         <label>Game name<input name="gameOther" maxlength="30" placeholder="Which game?" /></label>
-        <div class="pic">
-          <label class="pic-drop" id="picDrop">
-            <input type="file" id="picInput" accept="image/png,image/jpeg,image/webp" />
-            <img id="picPreview" alt="" hidden />
-            <span id="picHint">Add a picture</span>
-          </label>
-          <p class="muted pic-note">This game isn't in our list, so add your own picture. It's shown on your listing. PNG, JPG or WebP.</p>
-        </div>
       </div>
       <label>Title<input name="title" required minlength="3" maxlength="70" placeholder="e.g. Dragon Permanent" /></label>
       <div class="two">
@@ -186,10 +173,16 @@
         <label><span>Original price <span class="opt">(optional)</span></span><input name="wasPrice" type="number" min="0.01" max="100000" step="0.01" placeholder="Shows a discount" /></label>
       </div>
       <div class="instant">
-        <label class="check-row"><input type="checkbox" id="instantOn" /><span><b>⚡ Instant delivery</b><span class="muted">Add the account login now. Each buyer gets one automatically right after paying.</span></span></label>
+        <label class="check-row"><input type="checkbox" id="instantOn" /><span><b>⚡ Instant delivery</b><span class="muted">Add the account login now.</span></span></label>
         <div class="login-rows" id="loginRows" hidden></div>
         <button type="button" class="btn ghost sm" id="addLogin" hidden>+ Add another account</button>
-        <p class="muted small" id="loginNote" hidden>🔒 Logins are encrypted. Only the buyer of each order and staff can see them. Your stock is the number of logins you add.</p>
+        <p class="muted small" id="loginNote" hidden>🔒 Logins are encrypted and only the buyer and staff can see them.</p>
+      </div>
+      <div class="upload-box">
+        <label for="picInput">Game image <span class="opt">(required for custom games)</span></label>
+        <input id="picInput" type="file" accept="image/png,image/jpeg,image/webp" />
+        <img id="picPreview" class="preview" hidden alt="Listing preview" />
+        <small id="picHint" class="muted">PNG, JPG or WebP • max 200KB</small>
       </div>
       <label id="stockLabel">In stock<input name="stock" type="number" min="1" max="999" step="1" value="1" /></label>
       <label>Description<textarea name="description" required minlength="10" maxlength="1000" rows="4" placeholder="What's included, how you deliver it, any warranty."></textarea></label>
@@ -197,7 +190,6 @@
       <button class="btn sell wide" type="submit" value="default">Publish listing</button>
     </form>
   </dialog>
-
 
   <div class="drawer-back" id="drawerBack" hidden></div>
   <aside class="drawer" id="drawer" aria-label="Profile" aria-hidden="true" tabindex="-1"><div id="drawerBody"></div></aside>

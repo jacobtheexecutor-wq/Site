@@ -186,5 +186,6 @@ module.exports = {
   addWalletDeposit,
   saveListing,
   getListings,
+  readUsers,
   sanitizeUser,
 };
