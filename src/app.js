@@ -35,6 +35,12 @@ function createSecureApp() {
   app.use(cookieParser());
   app.use(globalLimiter);
 
+  app.use((req, res, next) => {
+    const blocked = req.path.startsWith('/src/') || req.path.startsWith('/api/') || req.path.startsWith('/.git') || req.path.includes('/.env') || req.path.includes('server.js') || req.path.includes('package.json');
+    if (blocked) return res.status(404).json({ error: 'Not found.' });
+    next();
+  });
+
   const ROOT = path.resolve(__dirname, '..');
   const HTML_ROOT = path.join(ROOT, 'src', 'html');
   app.use('/assets', express.static(path.join(ROOT, 'assets')));

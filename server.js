@@ -30,8 +30,16 @@ const TYPES = {
   '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json', '.ico': 'image/x-icon', '.md': 'text/plain; charset=utf-8',
 }
-// Files that exist in shop-site/ but must never be served (shop-site/api/ holds Vercel entry points)
-const PRIVATE = new Set(['server.js', 'dev-server.js'])
+// Files that exist in shop-site/ but must never be served.
+const PRIVATE = new Set([
+  'server.js',
+  'dev-server.js',
+  'package.json',
+  'package-lock.json',
+  '.env',
+  '.env.example',
+  'vercel.json',
+])
 
 function securityHeaders(res) {
   res.setHeader('X-Content-Type-Options', 'nosniff')
@@ -63,8 +71,10 @@ function serveStatic(req, res, u) {
   }
 
   const name = path.basename(file)
-  const top = rel.split(/[\\/]/)[0]
-  if (!rel || !file.startsWith(ROOT + path.sep) || name.startsWith('.') || PRIVATE.has(name) || top === 'api' || rel.split(/[\\/]/).some((p) => p.startsWith('.'))) {
+  const segments = rel.split(/[\\/]/)
+  const top = segments[0]
+  const isBlockedSourcePath = top === 'src' || top === 'api' || segments.some((p) => p === 'src' || p === 'api')
+  if (!rel || !file.startsWith(ROOT + path.sep) || name.startsWith('.') || PRIVATE.has(name) || isBlockedSourcePath || top === '.git' || segments.some((p) => p.startsWith('.'))) {
     res.statusCode = 404; return res.end('Not found')
   }
   fs.stat(file, (e, st) => {
