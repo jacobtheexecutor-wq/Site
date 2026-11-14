@@ -23,7 +23,6 @@ const path = require('path')
 const { createSecureApp } = require('./src/app')
 
 const ROOT = __dirname
-const HTML_ROOT = path.join(ROOT, 'src', 'html')
 const secureApp = createSecureApp()
 const MAX_BODY = 1024 * 1024 // 1 MB: listing pictures are ~270 KB at most
 const TYPES = {
@@ -45,11 +44,11 @@ function serveStatic(req, res, u) {
 
   let file = path.resolve(ROOT, rel)
   if (u.pathname === '/') {
-    file = path.join(HTML_ROOT, 'index.html')
+    file = path.join(ROOT, 'index.html')
   } else if (u.pathname.startsWith('/assets/')) {
     file = path.resolve(ROOT, u.pathname.slice(1))
   } else if (u.pathname.endsWith('.html')) {
-    file = path.join(HTML_ROOT, path.basename(u.pathname))
+    file = path.join(ROOT, path.basename(u.pathname))
   }
 
   const name = path.basename(file)

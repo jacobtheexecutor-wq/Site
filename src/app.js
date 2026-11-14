@@ -36,10 +36,11 @@ function createSecureApp() {
   app.use(globalLimiter);
 
   const ROOT = path.resolve(__dirname, '..');
-  const HTML_ROOT = path.join(ROOT, 'src', 'html');
-  app.use('/assets', express.static(path.join(ROOT, 'assets')));
-  app.get(['/', '/index.html'], (_req, res) => res.sendFile(path.join(HTML_ROOT, 'index.html')));
-  app.get('/admin', (_req, res) => res.sendFile(path.join(HTML_ROOT, 'admin.html')));
+  app.use(express.static(ROOT, { index: false, extensions: ['html'] }));
+  app.get(['/', '/index.html'], (_req, res) => res.sendFile(path.join(ROOT, 'index.html')));
+  app.get(['/admin', '/admin.html'], (_req, res) => res.sendFile(path.join(ROOT, 'admin.html')));
+  app.get(['/account-settings', '/account-settings.html'], (_req, res) => res.sendFile(path.join(ROOT, 'account-settings.html')));
+  app.get(['/profile', '/profile.html'], (_req, res) => res.sendFile(path.join(ROOT, 'profile.html')));
 
   const requireAuth = (req, res, next) => {
     const token = req.cookies[SESSION_COOKIE];
