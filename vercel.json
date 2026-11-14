@@ -1,7 +1,9 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "echo \"No install step needed\"",
-  "buildCommand": "echo \"No build step needed\"",
-  "outputDirectory": ".",
-  "framework": null
+  "version": 2,
+  "builds": [
+    { "src": "server.js", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "server.js" }
+  ]
 }
