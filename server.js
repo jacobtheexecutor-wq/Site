@@ -142,13 +142,16 @@ function createServer(opts = {}) {
 
 module.exports = { createServer }
 
+const app = createSecureApp()
+
 if (require.main === module) {
-  const port = Number(process.env.PORT || 10000)
+  const port = Number(process.env.PORT || 3000)
   const missing = ['MARKET_ADMIN_KEY', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'].filter((k) => !process.env[k])
-  if (!(process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL)) missing.unshift('UPSTASH_REDIS_REST_URL (or KV_REST_API_URL)')
-  if (!(process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN)) missing.unshift('UPSTASH_REDIS_REST_TOKEN (or KV_REST_API_TOKEN)')
-  createServer().listen(port, () => {
-    console.log(`Vaultix running on port ${port}`)
+  if (!(process.env.REDIS_URL || process.env.UPSTASH_REDIS_URL || process.env.KV_REST_API_URL)) missing.unshift('REDIS_URL (or UPSTASH_REDIS_URL / KV_REST_API_URL)')
+  app.listen(port, () => {
+    console.log(`AccountBay running on port ${port}`)
     if (missing.length) console.log(`Not set yet: ${missing.join(', ')} — the site runs in demo mode until the database is set, and payments need the Stripe keys.`)
   })
 }
+
+module.exports = app
