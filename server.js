@@ -162,7 +162,7 @@ function createServer(opts = {}) {
 
 const app = createSecureApp()
 
-if (require.main === module) {
+if (!process.env.VERCEL && require.main === module) {
   const port = Number(process.env.PORT || 3000)
   const missing = ['MARKET_ADMIN_KEY', 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET'].filter((k) => !process.env[k])
   if (!(process.env.REDIS_URL || process.env.UPSTASH_REDIS_URL || process.env.KV_REST_API_URL)) missing.unshift('REDIS_URL (or UPSTASH_REDIS_URL / KV_REST_API_URL)')
@@ -172,6 +172,8 @@ if (require.main === module) {
   })
 }
 
-module.exports = app
+module.exports = process.env.VERCEL
+  ? (req, res) => app(req, res)
+  : app
 module.exports.createServer = createServer
 module.exports.createSecureApp = createSecureApp
